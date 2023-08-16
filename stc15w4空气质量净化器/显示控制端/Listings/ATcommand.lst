@@ -1,0 +1,157 @@
+C51 COMPILER V9.59.0.0   ATCOMMAND                                                         05/06/2023 11:31:46 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE ATCOMMAND
+OBJECT MODULE PLACED IN .\Objects\ATcommand.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE ATcommand.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\List
+                    -ings\ATcommand.lst) OBJECT(.\Objects\ATcommand.obj)
+
+line level    source
+
+   1          #include "ATcommand.h"
+   2          #include "BasicFun.h"
+   3          #include "UART.h"
+   4          #include "string.h"
+   5          #include "LCD1602.h"
+   6          
+   7          extern xdata u8 uart02_buffer[UART_MAX];
+   8          
+   9          void Debug_Print()
+  10          {
+  11   1          static u8 times = 0;
+  12   1          u8 i = 0;
+  13   1          times++;
+  14   1          UART01_SendString("*****print debug*****\r\n");
+  15   1          for(i=0;i<UART_MAX;i++)
+  16   1          {
+  17   2              UART01_SendByte(uart02_buffer[i]);
+  18   2          }
+  19   1          UART01_SendString("\r\n");
+  20   1      }
+  21          
+  22          
+  23          bool Wait_CREG(void)
+  24          {
+  25   1          u8 k = 0,i = 0;
+  26   1          
+  27   1              Clean_Uart02Buffer();
+  28   1          while(1)                            
+  29   1              {
+  30   2                      Clean_Uart02Buffer();  //清除串口缓存数组   
+  31   2                      Uart02_SendString("AT+CREG?\r\n");//查询模块网络注册状态
+  32   2                      Delay(1000);     //等待模块响应数据     
+  33   2              // LCD_Init(); //清除上一轮残留重新显示
+  34   2                      // for(i=0; i<16 && uart02_buffer[i]!='\0' ;i++) //显示部分AT指令
+  35   2              //     LCD_ShowChar(2,i+1,uart02_buffer[i]);    
+  36   2              Debug_Print();                          
+  37   2                  for(k=0;k<UART_MAX;k++)                             
+  38   2              {
+  39   3                              if(uart02_buffer[k] == ':')
+  40   3                              {       
+  41   4                                      if((uart02_buffer[k+4] == '1')||(uart02_buffer[k+4] == '4')) //表明网络注册成功
+  42   4                                      {
+  43   5                                          return true;
+  44   5                                      }
+  45   4                              }
+  46   3                      }
+  47   2      
+  48   2              }
+  49   1      
+  50   1      }
+  51          
+  52          bool Is_IncStr( u8 *tar_buffer, u8 *inc_str )
+  53          { 
+  54   1          if(strstr(tar_buffer,inc_str)!=NULL)
+C51 COMPILER V9.59.0.0   ATCOMMAND                                                         05/06/2023 11:31:46 PAGE 2   
+
+  55   1                  return true;
+  56   1              else
+  57   1                  return flase;
+  58   1      }
+  59          
+  60          void Send_ATCommand(u8 *command,u8 *want_reaction,u8 wait_s)
+  61          {
+  62   1          u8 react = 0,i = 0;
+  63   1          LCD_Init();
+  64   1          do
+  65   1          {
+  66   2              Clean_Uart02Buffer();   //清除串口数据缓存数组
+  67   2              Uart02_SendString(command); //发送AT指令
+  68   2              Uart02_SendString("\r\n"); //发送换行 
+  69   2      
+  70   2              Delay(wait_s*1000);     //延时等待接收
+  71   2              Debug_Print();
+  72   2      
+  73   2              react = Is_IncStr(uart02_buffer,want_reaction);
+  74   2          } while (!react);
+  75   1      }
+  76          
+  77          void Set_MsgMode(u8 *phone_center)  //填写区号,配置短信模式
+  78          {
+  79   1          u8 temp_buffer[30] = "";
+  80   1          u8 react;
+  81   1          memset(temp_buffer,0,30);
+  82   1          sprintf(temp_buffer,"AT+CSCA=\"+861380%s500\"",phone_center);
+  83   1          Send_ATCommand(temp_buffer,"OK",2); 
+  84   1      
+  85   1          Send_ATCommand("AT+CMGF=1","OK",2); 
+  86   1          Send_ATCommand("AT+CSCS=\"GSM\"","OK",2); 
+  87   1          // Send_ATCommand("AT+CSMP=17,167,0,241","OK",2); 
+  88   1      
+  89   1      
+  90   1      
+  91   1          do
+  92   1          {
+  93   2              Clean_Uart02Buffer();   //清除串口数据缓存数组
+  94   2              Uart02_SendString("AT+CSMP=17,167,0,241"); //发送AT指令
+  95   2              Uart02_SendString("\r\n"); //发送换行 
+  96   2      
+  97   2              Delay(3*1000);     //延时等待接收
+  98   2      
+  99   2              // for(i=0; i<32 && uart02_buffer[i]!='\0' ;i++) //第二行显示部分响应
+ 100   2              //     LCD_ShowChar(i/16+1,i%16+1,uart02_buffer[i]);
+ 101   2              Debug_Print();
+ 102   2              react = Is_IncStr(uart02_buffer,"OK");
+ 103   2          } while (!react);
+ 104   1      
+ 105   1          Clean_Uart02Buffer();   //清除串口数据缓存数组
+ 106   1      
+ 107   1      }
+ 108          
+ 109          void Send_Msg(u8 *target_phone,u8 *content)
+ 110          {
+ 111   1          u8 temp_buffer[30]="";
+ 112   1          u8 i = 0;
+ 113   1          memset(temp_buffer,0,30);
+ 114   1          sprintf(temp_buffer,"AT+CMGS=\"%s\"",target_phone);
+ 115   1          Send_ATCommand(temp_buffer,">",2);
+ 116   1          Clean_Uart02Buffer(); 
+C51 COMPILER V9.59.0.0   ATCOMMAND                                                         05/06/2023 11:31:46 PAGE 3   
+
+ 117   1          Uart02_SendString(content);
+ 118   1          Uart02_SendData(0X1A);  //确认发送标志
+ 119   1          delay_ms(3000);
+ 120   1          for(i=0;i<8;i++)
+ 121   1          {
+ 122   2              Debug_Print();
+ 123   2              delay_ms(800);
+ 124   2          }
+ 125   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    724    ----
+   CONSTANT SIZE    =    184    ----
+   XDATA SIZE       =      1      88
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

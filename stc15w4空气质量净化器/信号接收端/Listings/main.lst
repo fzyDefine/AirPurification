@@ -1,0 +1,174 @@
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 01:20:15 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE main.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\Listings\
+                    -main.lst) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "BasicFun.h"
+   2          #include "uart.h"
+   3          #include "key.h"
+   4          #include "DHT11.h"
+   5          #include "LCD1602.h"
+   6          #include "oled.h"
+   7          #include <15AD.h>
+   8          
+   9          #define u8 unsigned char
+  10          #define u16 unsigned int
+  11          
+  12          extern u8 is_hongwai_key01;
+  13          extern u8 is_hongwai_key02;
+  14          extern u8 is_hongwai_key03;
+  15          
+  16          extern bit busy;
+  17          //extern sbit SCL=P2^2;
+  18          //extern sbit SDA=P2^3;
+  19          
+  20          
+  21          sbit BEEP = P2^4;       //蜂鸣器
+  22          
+  23          //按键123
+  24          sbit KEY01 = P3^5;
+  25          sbit KEY02 = P3^6;
+  26          sbit KEY03 = P3^7;
+  27          
+  28          //数据包接收数组
+  29          u16 CO2_Value = 0;
+  30          u16  Tvoc  , Tmplate, Hum ;
+  31          u16 PM25 = 0;
+  32          u8 change_mode = 0;
+  33          u8 send_flag = 0;
+  34          
+  35          u16 warn_buffer[4]={30,30,30,80};
+  36          
+  37          #define BUFFER_MAX 50
+  38          u8 data_buffer[BUFFER_MAX] = "";
+  39          
+  40          u8 Key_Scan()
+  41          {
+  42   1              u8 key_value = 0;
+  43   1      //      if(KEY01==0)
+  44   1      //      {
+  45   1      //              delay_ms(15);//@11.0592MHz
+  46   1      //              if(KEY01==0)
+  47   1      //              {
+  48   1      //                      key_value = 1;
+  49   1      //                      while(!KEY01);
+  50   1      //              }
+  51   1      //      }
+  52   1      //      if(KEY02==0)
+  53   1      //      {
+  54   1      //              delay_ms(15);//@11.0592MHz
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 01:20:15 PAGE 2   
+
+  55   1      //              if(KEY02==0)
+  56   1      //              {
+  57   1      //                      key_value = 2;
+  58   1      //                      while(!KEY02);
+  59   1      //              }
+  60   1      //      }
+  61   1      //      if(KEY03==0)
+  62   1      //      {
+  63   1      //              delay_ms(15);//@11.0592MHz
+  64   1      //              if(KEY03==0)
+  65   1      //              {
+  66   1      //                      key_value = 3;
+  67   1      //                      while(!KEY03);
+  68   1      //              }
+  69   1      //      }
+  70   1      
+  71   1              return key_value;
+  72   1      }
+  73          
+  74          
+  75          void main()
+  76          {
+  77   1              u8 key_value = 0,i=0;
+  78   1              Timer0Init();
+  79   1              Uart01_Init();
+  80   1              Uart02_Init();
+  81   1              Uart03_Init();
+  82   1              Uart04_Init();
+  83   1              OLED_Init();
+  84   1              LCD_Init();
+  85   1      
+  86   1              while (1)
+  87   1              {
+  88   2                      
+  89   2                      CO2Devide_DataPacket(&CO2_Value);       //CO2串口读取
+  90   2                      TVOCDevide_DataPacket(&Tvoc,&Tmplate,&Hum);     //TVOC,温度，湿度
+  91   2      
+  92   2                      key_value = Key_Scan(); //按键扫描
+  93   2      
+  94   2                      if(is_hongwai_key01 || key_value == 1)
+  95   2                      {       
+  96   3                              is_hongwai_key01 = 0;
+  97   3                              change_mode = (change_mode+1)%4;
+  98   3                      }
+  99   2      
+ 100   2      
+ 101   2                      if(is_hongwai_key02 || key_value == 2)
+ 102   2                      {       
+ 103   3                              is_hongwai_key02 = 0;
+ 104   3                              warn_buffer[change_mode] ++;
+ 105   3      
+ 106   3                      }
+ 107   2                      if(is_hongwai_key03 || key_value == 3)
+ 108   2                      {       
+ 109   3                              is_hongwai_key03 = 0;
+ 110   3                              warn_buffer[change_mode] --;
+ 111   3                      }       
+ 112   2                      
+ 113   2                      memset(data_buffer,0,BUFFER_MAX);
+ 114   2                      sprintf(data_buffer,"%u-%u-%u-%u-%u-%u-%u-%u",
+ 115   2                                                      CO2_Value,warn_buffer[0],
+ 116   2                                                      Tvoc,warn_buffer[1],
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 01:20:15 PAGE 3   
+
+ 117   2                                                      Tmplate,warn_buffer[2],
+ 118   2                                                      Hum,warn_buffer[3]);
+ 119   2      
+ 120   2                      Uart01_SendByte(0x2C);  //数据开始帧
+ 121   2                      Uart01_SendString(data_buffer);
+ 122   2                      Uart01_SendByte(0x60);  //数据结束帧
+ 123   2              }
+ 124   1      }
+ 125          
+ 126          
+ 127          
+ 128          void Timer0_Routine() interrupt 1 // 1ms低优先级定时器0
+ 129          {
+ 130   1              static u8 conut_device = 0;
+ 131   1              static u16 count_ms = 0;
+ 132   1              conut_device++;
+ 133   1              count_ms++;
+ 134   1              
+ 135   1              if(count_ms == 1000)
+ 136   1              {
+ 137   2                      send_flag = 1;
+ 138   2              }
+ 139   1      }
+ 140          
+ 141          
+ 142          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    430    ----
+   CONSTANT SIZE    =     24    ----
+   XDATA SIZE       =     73       2
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,220 @@
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 14:12:54 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE main.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\Listings\
+                    -main.lst) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <STC15.H>
+   2          #include <STDLIB.H>
+   3          #include <STRING.H>
+   4          #include <stdio.h>
+   5          #include "Delay.h"
+   6          #include "UART.h"
+   7          #include "LCD1602.h"
+   8          #include "Timer0.h"
+   9          #include <15AD.h>
+  10          
+  11          #define u8 unsigned char
+  12          #define u16 unsigned int
+  13          
+  14          sbit REALAY01 = P2^0;
+  15          sbit REALAY02 = P2^1;
+  16          sbit REALAY03 = P2^2;
+  17          
+  18          sbit BEEP = P2^6;
+  19          sbit LED = P2^7;
+  20          
+  21          sbit KEY1 = P3^5;
+  22          
+  23          u16 CO2_Value,warn_CO2,Tvoc,warn_Tvoc,Tmplate,warn_Tmplate,Hum,warn_Hum;
+  24          u16 PM25,PM25_Warn = 100;
+  25          
+  26          bit uart_send_flag = 0;
+  27          
+  28          u8 mode = 0;
+  29          
+  30          void ShowCO2_TVOC()
+  31          {
+  32   1              LCD_ShowString(1,1,"CO2:");LCD_ShowNum(1,5,CO2_Value,3);
+  33   1              LCD_ShowString(1,10,"BJ:");LCD_ShowNum(1,13,warn_CO2,3);
+  34   1      
+  35   1              LCD_ShowString(2,1,"TVC:");LCD_ShowNum(2,5,Tvoc,3);
+  36   1              LCD_ShowString(2,10,"BJ:");LCD_ShowNum(2,13,warn_Tvoc,3);
+  37   1      }
+  38          
+  39          void ShowTmp_Hum()
+  40          {
+  41   1              LCD_ShowString(1,1,"Tmp:");LCD_ShowNum(1,5,Tmplate,3);
+  42   1              LCD_ShowString(1,10,"BJ:");LCD_ShowNum(1,13,warn_Tmplate,3);
+  43   1      
+  44   1              LCD_ShowString(2,1,"Hum:");LCD_ShowNum(2,5,Hum,3);
+  45   1              LCD_ShowString(2,10,"BJ:");LCD_ShowNum(2,13,warn_Hum,3);
+  46   1      }
+  47          
+  48          void ShowHum()
+  49          {
+  50   1              LCD_ShowString(1,1,"P25:");LCD_ShowNum(1,5,PM25,3);
+  51   1              LCD_ShowString(1,10,"BJ:");LCD_ShowNum(1,13,PM25_Warn,3);
+  52   1      
+  53   1              LCD_ShowString(2,1,"-------  ------ ");
+  54   1      }
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 14:12:54 PAGE 2   
+
+  55          
+  56          void SendBlue()
+  57          {
+  58   1              char buffer[70] = "";
+  59   1              sprintf(buffer,"CO2=%u,TVOC=%u,Tmp=%u\r\nHum=%u,P25=%u\r\n",CO2_Value,Tvoc,Tmplate,Hum,PM25);
+  60   1              UART01_SendString(buffer);
+  61   1      
+  62   1      }
+  63          
+  64          u8 Key_scan()
+  65          {
+  66   1              u8 key_value = 0;
+  67   1              if(KEY1==0)
+  68   1              {
+  69   2                      Delay_ms(20);
+  70   2                      if(KEY1==0)
+  71   2                      {
+  72   3                              key_value = 1;
+  73   3                      }
+  74   2                      while(!KEY1);
+  75   2              }
+  76   1      
+  77   1              return key_value;
+  78   1      }       
+  79          
+  80          
+  81          void main()
+  82          {
+  83   1              unsigned char i = 0;
+  84   1              unsigned char key_v = 0;
+  85   1      
+  86   1              LCD_Init();
+  87   1              adc_init();//AD功能初始化
+  88   1              Timer0_Init();
+  89   1              UART01_Init();
+  90   1              Uart02_Init();
+  91   1      
+  92   1              BEEP = 1;
+  93   1              LED = 0;
+  94   1              
+  95   1              while(1)
+  96   1              {
+  97   2                      key_v = Key_scan();
+  98   2                      if(key_v)
+  99   2                              mode = (mode+1)%3;
+ 100   2      
+ 101   2                      if(uart_send_flag)
+ 102   2                      {
+ 103   3                      
+ 104   3                              Devide_DataPacket(&CO2_Value,&warn_CO2,&Tvoc,
+ 105   3                                      &warn_Tvoc,&Tmplate,&warn_Tmplate,&Hum,&warn_Hum);
+ 106   3      
+ 107   3                              PM25 = get_adc0();
+ 108   3      
+ 109   3                              Tmplate = Tmplate/10 - 7;
+ 110   3                              Hum /= 10;
+ 111   3                              CO2_Value = CO2_Value*100/2000;
+ 112   3                              Tvoc = Tvoc/ 10;
+ 113   3      
+ 114   3                              SendBlue();
+ 115   3      
+ 116   3                              uart_send_flag = 0;
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 14:12:54 PAGE 3   
+
+ 117   3                      }
+ 118   2      
+ 119   2                      if( Tmplate> warn_Tmplate || CO2_Value>warn_CO2 )
+ 120   2                      {
+ 121   3                              LED = 1;
+ 122   3                              BEEP = 0;
+ 123   3                      }
+ 124   2                      else
+ 125   2                      {
+ 126   3                              LED = 0;
+ 127   3                              BEEP = 1;
+ 128   3                      }
+ 129   2      
+ 130   2                      
+ 131   2      
+ 132   2      
+ 133   2                      if(CO2_Value>warn_CO2 || Tvoc>warn_Tvoc)        //环境不好
+ 134   2                      {
+ 135   3                              REALAY01 = 1;
+ 136   3                      }
+ 137   2                      else
+ 138   2                              REALAY01 = 0;
+ 139   2      
+ 140   2                      if( Tmplate > warn_Tmplate )
+ 141   2                      {
+ 142   3                              REALAY02 = 1;
+ 143   3                      }
+ 144   2                      else
+ 145   2                              REALAY02 = 0;
+ 146   2      
+ 147   2                      if( Hum > warn_Hum )
+ 148   2                      {
+ 149   3                              REALAY03 = 1;
+ 150   3                      }
+ 151   2                      else
+ 152   2                              REALAY03 = 0;
+ 153   2      
+ 154   2      
+ 155   2                      if(mode == 0)
+ 156   2                      {
+ 157   3                              ShowCO2_TVOC();
+ 158   3                      }
+ 159   2                      if(mode == 1)
+ 160   2                      {
+ 161   3                              ShowTmp_Hum();
+ 162   3                      }
+ 163   2                      if(mode == 2)
+ 164   2                      {
+ 165   3                              ShowHum();
+ 166   3                      }
+ 167   2              }       
+ 168   1      }
+ 169          
+ 170          void Timer0_Routine() interrupt 1
+ 171          {
+ 172   1              static unsigned int T0Count;
+ 173   1              T0Count++;
+ 174   1              if(T0Count>=500)
+ 175   1              {
+ 176   2                      T0Count=0;
+ 177   2                      uart_send_flag = 1;
+ 178   2              }
+C51 COMPILER V9.59.0.0   MAIN                                                              05/07/2023 14:12:54 PAGE 4   
+
+ 179   1      }
+ 180          
+ 181          
+ 182          
+ 183          
+ 184          
+ 185          
+ 186          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1025    ----
+   CONSTANT SIZE    =    155    ----
+   XDATA SIZE       =     23      73
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

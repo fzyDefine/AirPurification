@@ -1,0 +1,105 @@
+C51 COMPILER V9.59.0.0   15AD                                                              05/06/2023 23:25:56 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE 15AD
+OBJECT MODULE PLACED IN .\Objects\15AD.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE 15AD.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\Listings\
+                    -15AD.lst) OBJECT(.\Objects\15AD.obj)
+
+line level    source
+
+   1          #include <reg51.h>
+   2          #include <intrins.h>
+   3          #include <15AD.h>
+   4          #define nop _nop_()//延时
+   5          #define ADC_POWER 0x80//开电源
+   6          #define ADC_START 0x08//AD转换启动控制。
+   7          #define ADC_FLAG  0x10//AD转换结束标志
+   8          #define ADC_SPEEDH 0x40//转换速度为180个时钟周期
+   9          #define ADRJ 0X20  //ADRJ=1
+  10          //#define AD_P1_0 0x02 //P1.0为AD输出
+  11          //#define AD_P1_1 0x03 //P1.1为AD输出
+  12          sfr ADC_CONTR = 0Xbc;//命名ADC控制寄存器
+  13          sfr ADC_CONTR0 = 0Xbc;//命名ADC控制寄存器
+  14          sfr ADC_RES = 0Xbd;//命名数据高位
+  15          sfr ADC_RESL = 0Xbe;//命名数据低位
+  16          sfr P1ASF=0X9D;//命名P1口控制寄存器
+  17          sfr PCON2=0X97;//命名时钟分频寄存器
+  18          /***************AD初始化函数****************
+  19          设置P1.0口为AD输入口；
+  20          数据存放方式为高两位低八位；
+  21          开启电源；
+  22          设置转换速度；
+  23          *******************************************/
+  24          void adc_init(void)
+  25          {
+  26   1        P1ASF=0X0c;//P1ASF.0=1;//设置P1为模拟量输入
+  27   1              PCON2=PCON2|ADRJ;//ADRJ=1
+  28   1      
+  29   1              
+  30   1              
+  31   1              //设置AD电源开启、转换速度设置、AD输入端口
+  32   1              nop;nop;nop;nop;//延时4个机械周期
+  33   1              
+  34   1      }
+  35           
+  36          /***************读取AD值函数****************
+  37          开始转换AD数据；
+  38          等待转换完成；
+  39          存放数据；
+  40          清零标志位和数据位；
+  41          *******************************************/
+  42          unsigned int get_adc()//读取AD值
+  43          {
+  44   1      unsigned int i,j;
+  45   1              ADC_CONTR = ADC_POWER|ADC_SPEEDH|AD_P1_1;
+  46   1              nop;nop;nop;nop;
+  47   1              ADC_CONTR=ADC_CONTR|ADC_START;//开始转换
+  48   1              while((ADC_CONTR&ADC_FLAG)!=ADC_FLAG);//等待转换标志位
+  49   1              i=ADC_RES;
+  50   1              j=ADC_RESL;
+  51   1              i=i<<8;
+  52   1              i=i|j;
+  53   1              ADC_CONTR=ADC_CONTR&~ADC_FLAG;//清零转换标志位
+  54   1              ADC_RES=0;//数据清零
+C51 COMPILER V9.59.0.0   15AD                                                              05/06/2023 23:25:56 PAGE 2   
+
+  55   1              ADC_RESL=0;//数据清零
+  56   1              
+  57   1              return(i);
+  58   1      }
+  59          
+  60          unsigned int get_adc0()//读取AD值
+  61          {
+  62   1      unsigned int i,j;
+  63   1              ADC_CONTR0 = ADC_POWER|ADC_SPEEDH|AD_P1_0;
+  64   1              nop;nop;nop;nop;
+  65   1              ADC_CONTR0=ADC_CONTR0|ADC_START;//开始转换
+  66   1              while((ADC_CONTR0&ADC_FLAG)!=ADC_FLAG);//等待转换标志位
+  67   1              i=ADC_RES;
+  68   1              j=ADC_RESL;
+  69   1              i=i<<8;
+  70   1              i=i|j;
+  71   1              ADC_CONTR0=ADC_CONTR0&~ADC_FLAG;//清零转换标志位
+  72   1              ADC_RES=0;//数据清零
+  73   1              ADC_RESL=0;//数据清零
+  74   1              return(i);
+  75   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     81    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

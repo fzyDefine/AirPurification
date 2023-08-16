@@ -1,0 +1,86 @@
+C51 COMPILER V9.59.0.0   TIMER                                                             05/07/2023 00:18:29 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE TIMER
+OBJECT MODULE PLACED IN .\Objects\Timer.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE Timer.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\Listings
+                    -\Timer.lst) OBJECT(.\Objects\Timer.obj)
+
+line level    source
+
+   1          #include "BasicFun.h"
+   2          
+   3          void Timer0Init(void)   //1毫秒@11.0592MHz
+   4          {
+   5   1              AUXR |= 0x80;           //定时器时钟1T模式
+   6   1              TMOD &= 0xF0;           //设置定时器模式
+   7   1              TL0 = 0xCD;             //设置定时初始值
+   8   1              TH0 = 0xD4;             //设置定时初始值
+   9   1              TF0 = 0;                //清除TF0标志
+  10   1              TR0 = 1;                //定时器0开始计时
+  11   1      
+  12   1          ET0 = 1; // 允许定时器0中断
+  13   1          EA  = 1;  // 中断的总开关
+  14   1      }
+  15          
+  16          void Timer1Init(void)   // 100us定时器,数码管扫描专供
+  17          {
+  18   1              AUXR |= 0x40;           //定时器时钟1T模式
+  19   1              TMOD &= 0x0F;           //设置定时器模式
+  20   1              TL1 = 0xAE;             //设置定时初始值
+  21   1              TH1 = 0xFB;             //设置定时初始值
+  22   1              TF1 = 0;                //清除TF1标志
+  23   1              TR1 = 1;                //定时器1开始计时       
+  24   1      
+  25   1          ET1 = 1; // 允许定时器1中断
+  26   1          EA = 1;  // 中断的总开关
+  27   1      }
+  28          
+  29          /*定时器0中断函数模板
+  30          void Timer0_Routine() interrupt 1
+  31          {
+  32              static unsigned int T0Count;
+  33              TL0 = 0x66; //设置定时初始值
+  34              TH0 = 0xFC; //设置定时初始值
+  35              T0Count++;
+  36              if(T0Count>=1000)
+  37              {
+  38                  T0Count=0;
+  39          
+  40              }
+  41          }
+  42          */
+  43          
+  44          /*定时器1中断函数模板
+  45          void Timer1_Routine() interrupt 3
+  46          {
+  47              static unsigned int T0Count;
+  48          
+  49              T0Count++;
+  50              if(T0Count>=1000)
+  51              {
+  52                  T0Count=0;
+  53          
+  54              }
+C51 COMPILER V9.59.0.0   TIMER                                                             05/07/2023 00:18:29 PAGE 2   
+
+  55          }
+  56          */
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     42    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

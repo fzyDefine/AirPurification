@@ -1,0 +1,216 @@
+C51 COMPILER V9.59.0.0   UART                                                              05/06/2023 20:37:27 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE UART
+OBJECT MODULE PLACED IN .\Objects\uart.obj
+COMPILER INVOKED BY: D:\keil\keil_mdk\C51\BIN\C51.EXE uart.c LARGE OMF2 OPTIMIZE(8,SPEED) BROWSE DEBUG PRINT(.\Listings\
+                    -uart.lst) OBJECT(.\Objects\uart.obj)
+
+line level    source
+
+   1          #include "uart.h"
+   2          
+   3          #define BUFFER_MAX 50
+   4          
+   5          unsigned char RX_Count = 0;
+   6          
+   7          bit busy;
+   8          char rec_buf[BUFFER_MAX+2];
+   9          
+  10          void Rec_DataPacket(u8 _data)
+  11          {
+  12   1              static u8 i = 0;
+  13   1              static u8 tmp_buffer[BUFFER_MAX+2] = "";
+  14   1      
+  15   1              tmp_buffer[i++] = _data;        
+  16   1      
+  17   1              if ( i==1 && tmp_buffer[0]!=0X2C)       //没收到包头,重新接收
+  18   1              {
+  19   2                      i = 0;  //下标i复位
+  20   2                      memset(tmp_buffer,0,BUFFER_MAX+2);      //释放临时数组
+  21   2                      return;
+  22   2              }
+  23   1      
+  24   1              if( i>= BUFFER_MAX+2 ||  _data == 0X60) //超界或者接收到结束标识
+  25   1              {
+  26   2                      tmp_buffer[i-1] = '\0' ;        //替换结束标志
+  27   2                      memcpy(rec_buf,tmp_buffer,BUFFER_MAX+2);        //拷贝到目标数组
+  28   2                      memset(tmp_buffer,0,BUFFER_MAX+2);      //释放临时数组
+  29   2                      i = 0;  //下标i复位
+  30   2      
+  31   2              }
+  32   1              
+  33   1      }
+  34          
+  35          void Devide_DataPacket(u16 *rec_1,u16 *rec_2,u16 *rec_3,u16 *rec_4,u16 *rec_5,u16 *rec_6,u16 *rec_7,u16 *r
+             -ec_8)
+  36          {
+  37   1              char *token = NULL;
+  38   1              if(rec_buf[0] == 0)     //如果数据包是空的则返回
+  39   1              {
+  40   2                      return ;
+  41   2              }
+  42   1              
+  43   1              token = strtok(&rec_buf[1], "-");
+  44   1              *rec_1 = atoi(token);
+  45   1              token = strtok(NULL, "-");
+  46   1          *rec_2 = atoi(token);
+  47   1              token = strtok(NULL, "-");
+  48   1          *rec_3 = atoi(token);
+  49   1              token = strtok(NULL, "-");
+  50   1          *rec_4 = atoi(token);
+  51   1              token = strtok(NULL, "-");
+  52   1          *rec_5 = atoi(token);
+  53   1              token = strtok(NULL, "-");
+C51 COMPILER V9.59.0.0   UART                                                              05/06/2023 20:37:27 PAGE 2   
+
+  54   1          *rec_6 = atoi(token);
+  55   1              token = strtok(NULL, "-");
+  56   1          *rec_7 = atoi(token);
+  57   1              token = strtok(NULL, "-");
+  58   1          *rec_8 = atoi(token);
+  59   1      
+  60   1      }
+  61          
+  62          
+  63          void UART01_Init(void)          //9600bps@11.0592MHz
+  64          {
+  65   1              SCON = 0x50;            //8位数据,可变波特率
+  66   1              AUXR &= 0xBF;           //定时器时钟12T模式
+  67   1              AUXR &= 0xFE;           //串口1选择定时器1为波特率发生器
+  68   1              TMOD &= 0x0F;           //设置定时器模式
+  69   1              TL1 = 0xE8;             //设置定时初始值
+  70   1              TH1 = 0xFF;             //设置定时初始值
+  71   1              ET1 = 0;                //禁止定时器%d中断
+  72   1              TR1 = 1;                //定时器1开始计时
+  73   1      
+  74   1          ES = 1;
+  75   1          EA = 1;     //开启定时器
+  76   1      }
+  77          
+  78          void UART01_SendString(unsigned char *str)                              //发送字符串
+  79          {       
+  80   1              while(*str !='\0')              
+  81   1                      UART01_SendByte(*str++);        
+  82   1      
+  83   1      }
+  84          
+  85          void UART01_SendByte(unsigned char c)                           //发送一个字符
+  86          { 
+  87   1          TI=0;   
+  88   1          SBUF=c;   
+  89   1          while(TI==0);   
+  90   1          TI=0;   
+  91   1      }
+  92          
+  93          
+  94          void Uart01_Routine(void) interrupt 4 using 3                   
+  95          { 
+  96   1              unsigned char temp = 0;
+  97   1              char i = 0;
+  98   1              
+  99   1              if(RI == 1)
+ 100   1              {
+ 101   2                      RI = 0;
+ 102   2                      Rec_DataPacket(SBUF);
+ 103   2              }
+ 104   1              
+ 105   1      }
+ 106          
+ 107          
+ 108          
+ 109          void Uart02_Init()              //9600bps
+ 110          {
+ 111   1              S2CON = 0x50;           //8位数据,可变波特率
+ 112   1              AUXR &= 0xFB;           //定时器时钟12T模式
+ 113   1              T2L = 0xE8;             //设置定时初始值
+ 114   1              T2H = 0xFF;             //设置定时初始值
+ 115   1              AUXR |= 0x10;           //定时器2开始计时
+C51 COMPILER V9.59.0.0   UART                                                              05/06/2023 20:37:27 PAGE 3   
+
+ 116   1      
+ 117   1          IE2 &= 0xFE;   //先对需要设置的位进行清零 1111 1110
+ 118   1          IE2 |= 0x01;   // | ESPI | ES2 允许UART2中断
+ 119   1          EA = 1;        //允许总中断
+ 120   1      
+ 121   1              P_SW2 &=~ 0X01; //选择 P10RX P11TX
+ 122   1      }
+ 123          
+ 124          /***********发送*********/
+ 125          void Uart02_SendData(unsigned char dat)
+ 126          {
+ 127   1          while (busy); // 等待前面的数据发送完成
+ 128   1          busy = 1;
+ 129   1          S2BUF = dat; // 写数据到UART2数据寄存器
+ 130   1      }
+ 131          
+ 132          /************发送字符串*******************/
+ 133          void Uart02_SendString(char *s)
+ 134          {
+ 135   1          while (*s) // 检测字符串结束标志
+ 136   1          {
+ 137   2              Uart02_SendData(*s++); // 发送当前字符
+ 138   2          }
+ 139   1      }
+ 140          
+ 141          void Uart02_Routine() interrupt 8 using 2
+ 142          {
+ 143   1          unsigned char mydata;
+ 144   1          if(S2CON & 0x01)          //如果是接收中断
+ 145   1          {
+ 146   2              S2CON &= 0xFE;       //接收中断标志位清0  
+ 147   2              mydata = S2BUF;      //将接收缓冲区的数据保存到mydata变量中
+ 148   2      
+ 149   2      
+ 150   2      
+ 151   2          }
+ 152   1      
+ 153   1              if(S2CON & 0x02)          //如果是发送中断
+ 154   1          {
+ 155   2              S2CON &= 0xFD;       //发送中断标志清0  
+ 156   2                      busy = 0;
+ 157   2          }
+ 158   1      
+ 159   1      }
+ 160          
+ 161          
+ 162          
+ 163          
+ 164          
+ 165          
+ 166          
+ 167          
+ 168          
+ 169          
+ 170          
+ 171          
+ 172          
+ 173          
+ 174          
+ 175          
+ 176          
+ 177          
+C51 COMPILER V9.59.0.0   UART                                                              05/06/2023 20:37:27 PAGE 4   
+
+ 178          
+ 179          
+ 180          
+ 181          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    762    ----
+   CONSTANT SIZE    =      2    ----
+   XDATA SIZE       =    106      34
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+   EDATA SIZE       =   ----    ----
+   HDATA SIZE       =   ----    ----
+   XDATA CONST SIZE =   ----    ----
+   FAR CONST SIZE   =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

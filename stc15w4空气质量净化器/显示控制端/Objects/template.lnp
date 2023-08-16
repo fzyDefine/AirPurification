@@ -1,0 +1,10 @@
+".\Objects\Delay.obj",
+".\Objects\gps.obj",
+".\Objects\LCD1602.obj",
+".\Objects\main.obj",
+".\Objects\Timer0.obj",
+".\Objects\uart.obj",
+".\Objects\15AD.obj" 
+TO ".\Objects\template" 
+
+PRINT(".\Listings\template.map") REMOVEUNUSED 
